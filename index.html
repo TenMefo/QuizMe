@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Master - Kreator i Odtwarzacz</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="script.js" defer></script>
+</head>
+<body>
+
+    <nav class="nav-tabs">
+        <button class="nav-btn active" data-tab="player">Rozwiąż Quiz</button>
+        <button class="nav-btn" data-tab="editor">Edytuj Zestaw</button> <button class="nav-btn" data-tab="creator">Stwórz Nowy</button>
+    </nav>
+
+    <main class="container" id="view-player">
+        
+        <section id="start-screen">
+            <h1>Twoja Biblioteka</h1>
+            
+            <div id="saved-quizzes-container" class="hidden">
+                <h3>Zapisane quizy:</h3>
+                <div id="saved-list" class="saved-list">
+                    </div>
+                <div class="divider">lub wgraj nowy</div>
+            </div>
+
+            <p>Wgraj plik CSV, aby dodać go do biblioteki.</p>
+            <div class="file-upload-wrapper">
+                <input type="file" id="csvFile" accept=".csv" />
+            </div>
+            <div id="error-display" class="error-msg"></div>
+            <button class="btn" id="start-btn" disabled>Dodaj i Graj</button>
+        </section>
+
+        <section id="quiz-screen" class="hidden">
+            <div class="stats">
+                <span id="question-counter">Pytanie 1 z 10</span>
+                <button class="btn-small-exit" id="exit-quiz-btn">Wyjdź</button>
+            </div>
+            <h2 id="question-text">Treść pytania...</h2>
+            <div id="answers-container"></div>
+            
+            <div id="explanation-container" class="hidden">
+                <p class="explanation-label">Wyjaśnienie:</p>
+                <p id="explanation-text" class="explanation-text"></p>
+                <img id="explanation-image" src="" alt="Wyjaśnienie graficzne" />
+            </div>
+
+            <button class="btn hidden" id="check-btn">Sprawdź odpowiedź</button>
+            <button class="btn hidden" id="next-btn">Następne pytanie</button>
+            <button class="btn hidden" id="next-btn">Następne pytanie</button>
+        </section>
+
+        <section id="result-screen" class="hidden">
+            <h2>Koniec Quizu!</h2>
+            <p>Twój wynik to:</p>
+            <div class="result-score" id="final-score">0/0</div>
+            <p id="final-percent" style="font-size: 1.2rem;">0%</p>
+            
+            <div id="wrong-answers-review" class="hidden" style="margin: 20px 0; width: 100%; text-align: left;">
+                <h3>Błędne odpowiedzi:</h3>
+                <div id="wrong-answers-list" class="review-list"></div>
+            </div>
+
+            <button class="btn" id="restart-btn">Zagraj ponownie</button>
+            <button class="btn-secondary" id="back-to-menu-btn">Wróć do listy</button>
+        </section>
+    </main>
+    <main class="container hidden" id="view-editor">
+        <h1>Edytor Quizów</h1>
+        <p>Wgraj istniejący plik CSV, aby go poprawić lub rozbudować.</p>
+        
+        <div class="file-upload-wrapper">
+            <input type="file" id="editCsvFile" accept=".csv" />
+        </div>
+        <div id="editor-error-display" class="error-msg"></div>
+        
+        <button class="btn" id="load-edit-btn" disabled>Wczytaj do edycji</button>
+    </main>
+    <main class="container hidden" id="view-creator">
+        <h1>Kreator Pytań</h1>
+        <p>Dodaj pytania, a na końcu pobierz plik.</p>
+        
+        <div class="creator-form">
+            <div class="form-group">
+                <label for="new-q-text">Treść pytania:</label>
+                <textarea id="new-q-text" placeholder="np. Jaka jest stolica Polski?" rows="3"></textarea>
+            </div>
+
+            <p class="label-text">Odpowiedzi (zaznacz poprawne):</p>
+            
+            <div id="creator-answers-wrapper">
+                <!-- Tutaj będą generowane pola odpowiedzi -->
+            </div>
+            
+            <button class="btn-secondary" id="add-answer-btn" style="width: auto; margin-bottom: 15px; background-color: #e0e0e0; color: #333;">+ Dodaj odpowiedź</button>
+
+            <div class="form-group">
+                <label for="new-q-explanation">Wyjaśnienie (opcjonalnie):</label>
+                <textarea id="new-q-explanation" placeholder="Tekst wyświetlany po udzieleniu odpowiedzi" rows="3"></textarea>
+            </div>
+            
+            <div class="form-group" style="margin-top: 20px;">
+                <label for="new-q-image">Link do zdjęcia (opcjonalnie):</label>
+                <input type="text" id="new-q-image" placeholder="np. https://example.com/foto.jpg lub images/foto.jpg">
+                <p style="font-size: 0.8rem; color: #888;">Wklej link z internetu lub nazwę pliku, jeśli trzymasz go w folderze z grą.</p>
+            </div>
+
+            <button class="btn hidden" id="next-btn">Następne pytanie</button>
+
+            <div class="form-actions-row">
+                <button class="btn-secondary" id="add-q-btn">+ Dodaj pytanie do listy</button>
+                <button class="btn-cancel hidden" id="cancel-edit-btn">Anuluj edycję</button>
+            </div>
+        </div>
+
+        <h3>Twoja lista (<span id="count-display">0</span>)</h3>
+        <div class="preview-list" id="preview-container">
+            <p class="empty-list-msg">Lista jest pusta. Dodaj pierwsze pytanie powyżej.</p>
+        </div>
+
+        <div class="creator-actions">
+            <button class="btn" id="download-btn" disabled>Pobierz plik CSV</button>
+        </div>
+    </main>
+
+</body>
+</html>
