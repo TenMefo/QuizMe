@@ -146,7 +146,13 @@ function initPlayerEvents() {
 
     startBtn.addEventListener('click', loadAndSaveNewFile);
     
-    checkBtn.addEventListener('click', submitMultiAnswer); // NOWE
+    checkBtn.addEventListener('click', () => {
+        if (document.getElementById('open-answer-input')) {
+            checkOpenAnswer();
+        } else {
+            submitMultiAnswer();
+        }
+    });
 
     nextBtn.addEventListener('click', () => {
         currentQuestionIndex++;
@@ -169,6 +175,7 @@ function initPlayerEvents() {
     exitBtn.addEventListener('click', goBack);
     backMenuBtn.addEventListener('click', goBack);
 }
+
 
 function loadAndSaveNewFile() {
     const file = document.getElementById('csvFile').files[0];
@@ -207,6 +214,10 @@ function loadQuestion() {
     const explContainer = document.getElementById('explanation-container'); 
     const counterText = document.getElementById('question-counter');
     const questionText = document.getElementById('question-text');
+    
+    // NOWE: Pobranie elementu zdjęcia pytania
+    const qImageEl = document.getElementById('question-image');
+    if (qImageEl) qImageEl.classList.add('hidden');
 
     nextBtn.classList.add('hidden');
     checkBtn.classList.add('hidden');
@@ -215,30 +226,54 @@ function loadQuestion() {
     
     const currentQ = questions[currentQuestionIndex];
     counterText.textContent = `Pytanie ${currentQuestionIndex + 1} z ${questions.length}`;
-    
-    // Sprawdzamy liczbę poprawnych odpowiedzi
-    const correctCount = currentQ.answers.filter(a => a.correct).length;
-    
-    if (correctCount > 1) {
-        questionText.innerHTML = currentQ.question + ` <br><small style="font-size: 0.6em; color: #666; font-weight: normal;">(Wybierz ${correctCount} poprawne)</small>`;
-    } else {
-        questionText.textContent = currentQ.question;
+
+    // NOWE: Wyświetlenie zdjęcia pytania, jeśli istnieje
+    if (currentQ.questionImage && currentQ.questionImage.trim() !== "") {
+        qImageEl.src = currentQ.questionImage;
+        qImageEl.classList.remove('hidden');
     }
-    
-    const shuffledAnswers = shuffleArray([...currentQ.answers]);
-    shuffledAnswers.forEach(ans => {
-        const btn = document.createElement('button');
-        btn.classList.add('btn', 'btn-option');
-        btn.textContent = ans.text;
-        btn.dataset.correct = ans.correct;
+
+    const correctCount = currentQ.answers.filter(a => a.correct).length;
+    const isOpenQuestion = currentQ.answers.length === 1 && currentQ.answers[0].correct;
+
+    if (isOpenQuestion) {
+        questionText.textContent = currentQ.question;
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.id = 'open-answer-input';
+        input.className = 'open-input';
+        input.placeholder = 'Wpisz swoją odpowiedź...';
         
+        // Enter automatycznie sprawdza odpowiedź
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') document.getElementById('check-btn').click();
+        });
+
+        answersContainer.appendChild(input);
+        checkBtn.classList.remove('hidden');
+        input.focus();
+    } else {
         if (correctCount > 1) {
-            btn.addEventListener('click', (e) => toggleOption(e, checkBtn));
+            questionText.innerHTML = currentQ.question + ` <br><small style="font-size: 0.6em; color: #666; font-weight: normal;">(Wybierz ${correctCount} poprawne)</small>`;
         } else {
-            btn.addEventListener('click', selectAnswer);
+            questionText.textContent = currentQ.question;
         }
-        answersContainer.appendChild(btn);
-    });
+        
+        const shuffledAnswers = shuffleArray([...currentQ.answers]);
+        shuffledAnswers.forEach(ans => {
+            const btn = document.createElement('button');
+            btn.classList.add('btn', 'btn-option');
+            btn.textContent = ans.text;
+            btn.dataset.correct = ans.correct;
+            
+            if (correctCount > 1) {
+                btn.addEventListener('click', (e) => toggleOption(e, checkBtn));
+            } else {
+                btn.addEventListener('click', selectAnswer);
+            }
+            answersContainer.appendChild(btn);
+        });
+    }
 }
 
 function toggleOption(e, checkBtn) {
@@ -391,6 +426,77 @@ function showResults() {
     }
 }
 
+function checkOpenAnswer() {
+    if (isAnswered) return;
+    isAnswered = true;
+    document.getElementById('check-btn').classList.add('hidden');
+    
+    const input = document.getElementById('open-answer-input');
+    const userAns = input.value.trim();
+    const correctAns = questions[currentQuestionIndex].answers[0].text;
+    
+    const isCorrect = isAnswerCloseEnough(userAns, correctAns);
+    
+    if (isCorrect) {
+        input.classList.add('correct');
+        score++;
+    } else {
+        input.classList.add('wrong');
+        wrongAnswers.push({
+            question: questions[currentQuestionIndex].question,
+            user: [userAns || "(brak)"],
+            correct: [correctAns]
+        });
+    }
+
+    // Wyświetlanie poprawnej odpowiedzi w przypadku jakiejkolwiek różnicy
+    if (userAns !== correctAns) {
+        const diffMsg = document.createElement('div');
+        diffMsg.style.color = isCorrect ? '#2e7d32' : '#c62828';
+        diffMsg.style.fontSize = '0.9rem';
+        diffMsg.style.marginTop = '8px';
+        diffMsg.innerHTML = isCorrect 
+            ? `<em>Zaliczono! Dokładna odpowiedź to: <strong>${correctAns}</strong></em>`
+            : `<em>Poprawna odpowiedź: <strong>${correctAns}</strong></em>`;
+        input.parentNode.insertBefore(diffMsg, input.nextSibling);
+    }
+    
+    input.disabled = true;
+    showExplanation();
+    document.getElementById('next-btn').classList.remove('hidden');
+}
+
+function isAnswerCloseEnough(user, correct) {
+    const u = user.toLowerCase();
+    const c = correct.toLowerCase();
+    if (u === c) return true;
+    
+    const dist = getEditDistance(u, c);
+    // Dopuszczamy 1 błąd na każde 5 znaków długości (dla krótkich słów = 1 literówka, dla dłuższych = więcej)
+    const allowedDist = Math.max(1, Math.floor(c.length / 5)); 
+    return dist <= allowedDist;
+}
+
+function getEditDistance(a, b) {
+    if (a.length === 0) return b.length;
+    if (b.length === 0) return a.length;
+    const matrix = [];
+    for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+    for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+    for (let i = 1; i <= b.length; i++) {
+        for (let j = 1; j <= a.length; j++) {
+            if (b.charAt(i - 1) === a.charAt(j - 1)) {
+                matrix[i][j] = matrix[i - 1][j - 1];
+            } else {
+                matrix[i][j] = Math.min(
+                    matrix[i - 1][j - 1] + 1,
+                    Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1)
+                );
+            }
+        }
+    }
+    return matrix[b.length][a.length];
+}
 // ==========================================
 // 4. PARSER CSV (Refactored for Multiline Support)
 // ==========================================
@@ -437,6 +543,8 @@ function parseCSV(text) {
     // Detect format
     const headerRow = rows[0].map(c => c.toLowerCase());
     const headerStr = headerRow.join(',');
+
+    const isV3 = headerStr.includes('zdjęciepytania');
     const isV2 = headerStr.includes('wyjaśnienie') || (headerStr.includes('zdjęcie') && headerRow.indexOf('zdjęcie') < 3);
 
     let startIdx = 0;
@@ -449,10 +557,17 @@ function parseCSV(text) {
         const qText = parts[0];
         let rawAnswers = [];
         let imgUrl = "";
+        let questionImgUrl = "";
         let explanation = "";
 
-        if (isV2) {
-            // Format V2: Pytanie, Zdjęcie, Wyjaśnienie, Odp1, Odp2...
+        if (isV3) {
+            // Format V3: Pytanie, ZdjęciePytania, ZdjęcieWyjaśnienia, Wyjaśnienie, Odp1...
+            questionImgUrl = parts[1] || "";
+            imgUrl = parts[2] || "";
+            explanation = parts[3] || "";
+            rawAnswers = parts.slice(4);
+        } else if (isV2) {
+            // Format V2: Pytanie, Zdjęcie, Wyjaśnienie, Odp1...
             imgUrl = parts[1] || "";
             explanation = parts[2] || "";
             rawAnswers = parts.slice(3);
@@ -469,11 +584,7 @@ function parseCSV(text) {
             if (!ans) return;
             let isCorrect = false;
             let cleanText = ans;
-            if (ans.startsWith('*')) {
-                isCorrect = true;
-                cleanText = ans.substring(1);
-                correctCount++;
-            }
+            if (ans.startsWith('*')) { isCorrect = true; cleanText = ans.substring(1); correctCount++; }
             if (cleanText !== "") answers.push({ text: cleanText, correct: isCorrect });
         });
 
@@ -482,6 +593,7 @@ function parseCSV(text) {
                 question: qText, 
                 answers: answers, 
                 image: imgUrl,
+                questionImage: questionImgUrl, // NOWE
                 explanation: explanation
             });
         }
@@ -497,7 +609,6 @@ function shuffleArray(array) {
     }
     return newArray;
 }
-
 // ==========================================
 // 6. OBSŁUGA KREATORA I EDYTORA
 // ==========================================
@@ -517,11 +628,10 @@ function initEditorEvents() {
                 const rawParsed = parseCSV(e.target.result);
                 if (rawParsed.length === 0) throw new Error("Plik pusty.");
                 
-                // Konwersja do formatu kreatora
                 createdQuestions = rawParsed.map(q => {
                     return {
                         question: q.question,
-                        answers: q.answers, // Już są obiektami {text, correct}
+                        answers: q.answers,
                         image: q.image || "",
                         explanation: q.explanation || ""
                     };
@@ -545,8 +655,106 @@ function initCreatorEvents() {
     document.getElementById('cancel-edit-btn').addEventListener('click', resetCreatorForm);
     document.getElementById('download-btn').addEventListener('click', downloadCSV);
     
-    // Nowe: dodawanie dynamiczne odpowiedzi
-    document.getElementById('add-answer-btn').addEventListener('click', () => addCreatorAnswerRow());
+    // Obsługa menu bocznego
+    const sideMenu = document.getElementById('side-menu-options');
+    document.getElementById('toggle-side-menu').addEventListener('click', () => {
+        sideMenu.classList.toggle('hidden');
+    });
+    
+    document.getElementById('side-add-answer').addEventListener('click', () => {
+        addCreatorAnswerRow();
+        sideMenu.classList.add('hidden');
+    });
+    
+    document.getElementById('side-add-open').addEventListener('click', () => {
+        document.getElementById('template-selector').value = "5"; // Aktualizacja selecta dla spójności
+        applyTemplate('5');
+        document.getElementById('side-menu-options').classList.add('hidden');
+    });
+
+    document.getElementById('side-add-q-image').addEventListener('click', () => {
+        document.getElementById('group-question-image').classList.remove('hidden');
+        sideMenu.classList.add('hidden');
+    });
+
+    document.getElementById('side-add-image').addEventListener('click', () => {
+        document.getElementById('group-image').classList.remove('hidden');
+        sideMenu.classList.add('hidden');
+    });
+    
+    document.getElementById('side-add-expl').addEventListener('click', () => {
+        document.getElementById('group-explanation').classList.remove('hidden');
+        sideMenu.classList.add('hidden');
+    });
+
+    // Zmiana templatki
+    document.getElementById('template-selector').addEventListener('change', (e) => {
+        if (editingIndex === -1) { 
+            applyTemplate(e.target.value);
+        }
+    });
+
+    // Wymuszenie domyślnej templatki po załadowaniu
+    setTimeout(() => {
+        applyTemplate(document.getElementById('template-selector').value);
+    }, 100);
+}
+
+function applyTemplate(type) {
+    document.getElementById('new-q-text').value = "";
+    document.getElementById('new-q-image').value = "";
+    document.getElementById('new-q-question-image').value = "";
+    document.getElementById('new-q-explanation').value = "";
+    
+    const container = document.getElementById('creator-answers-wrapper');
+    container.innerHTML = "";
+
+    const groupImg = document.getElementById('group-image');
+    const groupQImg = document.getElementById('group-question-image');
+    const groupExpl = document.getElementById('group-explanation');
+
+    groupQImg.classList.add('hidden');
+
+    switch(type) {
+        case '1': // 4 odp (1 poprawna), brak zdjęcia i opisu
+            addCreatorAnswerRow("", false);
+            addCreatorAnswerRow("", false);
+            addCreatorAnswerRow("", false);
+            addCreatorAnswerRow("", false);
+            groupImg.classList.add('hidden');
+            groupExpl.classList.add('hidden');
+            break;
+        case '2': // 4 odp (kilka poprawnych), z opisem, brak zdjęcia
+            addCreatorAnswerRow("", false);
+            addCreatorAnswerRow("", false);
+            addCreatorAnswerRow("", false);
+            addCreatorAnswerRow("", false);
+            groupImg.classList.add('hidden');
+            groupExpl.classList.remove('hidden');
+            break;
+        case '3': // 2 odp (1 poprawna), ze zdjęciem, brak opisu
+            addCreatorAnswerRow("", true);
+            addCreatorAnswerRow("", false);
+            groupImg.classList.remove('hidden');
+            groupExpl.classList.add('hidden');
+            break;
+        case '4': // Puste (domyślne)
+        default:
+            addCreatorAnswerRow();
+            addCreatorAnswerRow();
+            groupImg.classList.remove('hidden');
+            groupExpl.classList.remove('hidden');
+            break;
+        case '5': // Pytanie otwarte
+            addCreatorAnswerRow("", true);
+            // Ukrywamy checkboxa, żeby użytkownik nie mógł go odznaczyć
+            const cb = document.querySelector('#creator-answers-wrapper input[type="checkbox"]');
+            if(cb) cb.style.display = 'none';
+            document.querySelector('#creator-answers-wrapper input[type="text"]').placeholder = "Wpisz poprawną odpowiedź...";
+            groupImg.classList.remove('hidden');
+            groupExpl.classList.remove('hidden');
+            break;
+    }
 }
 
 function addCreatorAnswerRow(text = "", isCorrect = false) {
@@ -564,10 +772,11 @@ function addCreatorAnswerRow(text = "", isCorrect = false) {
     input.value = text;
     input.placeholder = "Treść odpowiedzi...";
     input.style.flexGrow = "1";
+    input.style.padding = "4px";
     
     const removeBtn = document.createElement('button');
     removeBtn.classList.add('btn-remove-ans');
-    removeBtn.innerHTML = "&times;"; // X
+    removeBtn.innerHTML = "&times;";
     removeBtn.title = "Usuń";
     removeBtn.addEventListener('click', () => div.remove());
     
@@ -580,6 +789,7 @@ function addCreatorAnswerRow(text = "", isCorrect = false) {
 function handleQuestionSubmit() {
     const qText = document.getElementById('new-q-text').value.trim();
     const qImage = document.getElementById('new-q-image').value.trim();
+    const qQuestionImage = document.getElementById('new-q-question-image').value.trim();
     const qExpl = document.getElementById('new-q-explanation').value.trim();
     
     const rows = document.querySelectorAll('#creator-answers-wrapper .creator-answer-row');
@@ -595,8 +805,8 @@ function handleQuestionSubmit() {
         }
     });
 
-    if (!qText || answers.length < 2 || !hasCorrect) {
-        alert("Wpisz pytanie, dodaj min. 2 odpowiedzi i zaznacz poprawną."); 
+    if (!qText || answers.length < 1 || !hasCorrect) {
+        alert("Wpisz pytanie, dodaj min. 1 odpowiedź i zaznacz poprawną."); 
         return; 
     }
 
@@ -604,6 +814,7 @@ function handleQuestionSubmit() {
         question: qText,
         answers: answers,
         image: qImage,
+        questionImage: qQuestionImage, // NOWE
         explanation: qExpl
     };
 
@@ -614,11 +825,17 @@ function handleQuestionSubmit() {
     renderPreview();
 }
 
+
 function loadQuestionForEdit(index) {
     const q = createdQuestions[index];
     document.getElementById('new-q-text').value = q.question;
     document.getElementById('new-q-image').value = q.image || "";
+    document.getElementById('new-q-question-image').value = q.questionImage || ""; // NOWE
     document.getElementById('new-q-explanation').value = q.explanation || "";
+
+    document.getElementById('group-image').classList.remove('hidden');
+    document.getElementById('group-question-image').classList.remove('hidden'); // NOWE
+    document.getElementById('group-explanation').classList.remove('hidden');
 
     const container = document.getElementById('creator-answers-wrapper');
     container.innerHTML = "";
@@ -636,21 +853,16 @@ function loadQuestionForEdit(index) {
 
 function resetCreatorForm() {
     editingIndex = -1;
-    document.getElementById('new-q-text').value = "";
-    document.getElementById('new-q-image').value = "";
-    document.getElementById('new-q-explanation').value = "";
     
-    const container = document.getElementById('creator-answers-wrapper');
-    container.innerHTML = "";
-    // Domyślnie dodaj 2 puste
-    addCreatorAnswerRow();
-    addCreatorAnswerRow();
-
     const addBtn = document.getElementById('add-q-btn');
     const cancelBtn = document.getElementById('cancel-edit-btn');
     addBtn.textContent = "+ Dodaj pytanie do listy";
-    addBtn.style.backgroundColor = "";
+    addBtn.style.backgroundColor = "var(--primary-color)";
     cancelBtn.classList.add('hidden');
+
+    // Przywrócenie stanu z wybranej templatki
+    const currentTemplate = document.getElementById('template-selector').value;
+    applyTemplate(currentTemplate);
 }
 
 function renderPreview() {
@@ -667,11 +879,12 @@ function renderPreview() {
             `<div class="preview-ans ${a.correct ? 'is-correct' : ''}">${a.correct ? '✔ ' : '- '}${a.text}</div>`
         ).join('');
         
-        const imgIcon = q.image ? '<span style="font-size:0.8rem; color:#2196F3;"> 🖼️</span>' : '';
+        const qImgIcon = q.questionImage ? '<span style="font-size:0.8rem; color:#9c27b0;"> 🖼️❓</span>' : ''; // NOWE
+        const imgIcon = q.image ? '<span style="font-size:0.8rem; color:#2196F3;"> 🖼️ Wyj.</span>' : '';
         const expIcon = q.explanation ? '<span style="font-size:0.8rem; color:#4CAF50;"> 📝</span>' : '';
 
         div.innerHTML = `
-            <div class="preview-question">${idx+1}. ${q.question} ${imgIcon}${expIcon}</div>
+            <div class="preview-question">${idx+1}. ${q.question} ${qImgIcon}${imgIcon}${expIcon}</div>
             ${ansHtml}
             <button class="btn-edit" data-index="${idx}">Edytuj</button>
             <button class="btn-delete" data-index="${idx}">Usuń</button>
@@ -692,11 +905,10 @@ function renderPreview() {
 function downloadCSV() {
     if (createdQuestions.length === 0) return;
     
-    // Znajdź maksymalną liczbę odpowiedzi
     const maxAns = Math.max(...createdQuestions.map(q => q.answers.length));
     
-    // Generuj nagłówek V2
-    let header = "Pytanie,Zdjęcie,Wyjaśnienie";
+    // Zmieniony nagłówek dla nowej wersji pliku
+    let header = "Pytanie,ZdjęciePytania,ZdjęcieWyjaśnienia,Wyjaśnienie";
     for(let i=1; i<=maxAns; i++) header += `,Odpowiedź ${i}`;
     header += "\n";
     
@@ -713,12 +925,12 @@ function downloadCSV() {
     createdQuestions.forEach(q => {
         let row = [
             escape(q.question),
+            escape(q.questionImage), // NOWE
             escape(q.image),
             escape(q.explanation)
         ];
         
         q.answers.forEach(a => {
-            // Internal structure is expected to be {text, correct}
             row.push(escape((a.correct ? "*" : "") + a.text));
         });
         

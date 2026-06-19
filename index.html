@@ -40,6 +40,7 @@
                 <button class="btn-small-exit" id="exit-quiz-btn">Wyjdź</button>
             </div>
             <h2 id="question-text">Treść pytania...</h2>
+            <img id="question-image" class="question-image hidden" src="" alt="Grafika do pytania" /> 
             <div id="answers-container"></div>
             
             <div id="explanation-container" class="hidden">
@@ -49,7 +50,6 @@
             </div>
 
             <button class="btn hidden" id="check-btn">Sprawdź odpowiedź</button>
-            <button class="btn hidden" id="next-btn">Następne pytanie</button>
             <button class="btn hidden" id="next-btn">Następne pytanie</button>
         </section>
 
@@ -83,37 +83,62 @@
         <h1>Kreator Pytań</h1>
         <p>Dodaj pytania, a na końcu pobierz plik.</p>
         
-        <div class="creator-form">
-            <div class="form-group">
-                <label for="new-q-text">Treść pytania:</label>
-                <textarea id="new-q-text" placeholder="np. Jaka jest stolica Polski?" rows="3"></textarea>
-            </div>
+        <!-- Nowy moduł: Wybór templatki -->
+        <div class="form-group" style="background: #e3f2fd; padding: 15px; border-radius: 8px;">
+            <label for="template-selector" style="color: var(--primary-color); font-weight: bold;">Wybierz szablon dla nowego pytania:</label>
+            <select id="template-selector" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #90caf9; margin-top: 5px;">
+                <option value="1">4 odpowiedzi</option>
+                <option value="2">4 odpowiedzi z opisem</option>
+                <option value="3">2 odpowiedzi ze zdjęciem</option>
+                <option value="4">Puste</option>
+                <option value="5">Pytanie otwarte</option>     
+            </select>
+        </div>
 
-            <p class="label-text">Odpowiedzi (zaznacz poprawne):</p>
+        <!-- Kontener na formularz i menu boczne -->
+        <div style="display: flex; gap: 15px; position: relative; margin-top: 20px;">
             
-            <div id="creator-answers-wrapper">
-                <!-- Tutaj będą generowane pola odpowiedzi -->
-            </div>
-            
-            <button class="btn-secondary" id="add-answer-btn" style="width: auto; margin-bottom: 15px; background-color: #e0e0e0; color: #333;">+ Dodaj odpowiedź</button>
+            <div class="creator-form" style="flex-grow: 1; margin-bottom: 0;">
+                <div class="form-group">
+                    <label for="new-q-text">Treść pytania:</label>
+                    <textarea id="new-q-text" placeholder="np. Jaka jest stolica Polski?" rows="3"></textarea>
+                </div>
 
-            <div class="form-group">
-                <label for="new-q-explanation">Wyjaśnienie (opcjonalnie):</label>
-                <textarea id="new-q-explanation" placeholder="Tekst wyświetlany po udzieleniu odpowiedzi" rows="3"></textarea>
-            </div>
-            
-            <div class="form-group" style="margin-top: 20px;">
-                <label for="new-q-image">Link do zdjęcia (opcjonalnie):</label>
-                <input type="text" id="new-q-image" placeholder="np. https://example.com/foto.jpg lub images/foto.jpg">
-                <p style="font-size: 0.8rem; color: #888;">Wklej link z internetu lub nazwę pliku, jeśli trzymasz go w folderze z grą.</p>
+                <div class="form-group hidden" id="group-question-image">
+                    <label for="new-q-question-image">Link do zdjęcia do polecenia (opcjonalnie):</label>
+                    <input type="text" id="new-q-question-image" placeholder="np. https://example.com/obrazek-do-pytania.jpg">
+                </div>
+
+                <p class="label-text">Odpowiedzi (zaznacz poprawne):</p>
+                <div id="creator-answers-wrapper"></div>
+
+                <div class="form-group" id="group-explanation">
+                    <label for="new-q-explanation">Wyjaśnienie (opcjonalnie):</label>
+                    <textarea id="new-q-explanation" placeholder="Tekst wyświetlany po udzieleniu odpowiedzi" rows="3"></textarea>
+                </div>
+                
+                <div class="form-group" id="group-image" style="margin-top: 20px;">
+                    <label for="new-q-image">Link do zdjęcia (opcjonalnie):</label>
+                    <input type="text" id="new-q-image" placeholder="np. https://example.com/foto.jpg">
+                </div>
             </div>
 
-            <button class="btn hidden" id="next-btn">Następne pytanie</button>
-
-            <div class="form-actions-row">
-                <button class="btn-secondary" id="add-q-btn">+ Dodaj pytanie do listy</button>
-                <button class="btn-cancel hidden" id="cancel-edit-btn">Anuluj edycję</button>
+            <!-- Menu boczne -->
+            <div class="side-menu-wrapper">
+                <button type="button" id="toggle-side-menu" class="btn-side" title="Dodaj elementy">➕</button>
+                <div id="side-menu-options" class="side-options hidden">
+                    <button type="button" id="side-add-answer">+ Dodaj odpowiedź</button>
+                    <button type="button" id="side-add-open">+ Pytanie otwarte</button>
+                    <button type="button" id="side-add-q-image">+ Dodaj zdjęcie do pytania</button>
+                    <button type="button" id="side-add-image">+ Pokaż zdjęcie (wyjaśnienie)</button>
+                    <button type="button" id="side-add-expl">+ Pokaż wyjaśnienie</button>
+                </div>
             </div>
+        </div>
+
+        <div class="form-actions-row" style="margin-top: 20px;">
+            <button class="btn-secondary" id="add-q-btn" style="background-color: var(--primary-color);">+ Dodaj pytanie do listy</button>
+            <button class="btn-cancel hidden" id="cancel-edit-btn">Anuluj edycję</button>
         </div>
 
         <h3>Twoja lista (<span id="count-display">0</span>)</h3>
